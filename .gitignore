@@ -1,0 +1,9 @@
+**/node_modules/
+**/dist/
+**/.angular/
+**/target/
+**/.venv/
+**/__pycache__/
+**/.pytest_cache/
+.env
+.DS_Store
