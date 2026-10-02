@@ -2,7 +2,7 @@
 
 Baseball scoring with a path toward AI-assisted play interpretation from one phone.
 
-This first milestone contains an Angular 22 frontend, Spring Boot 4.1.1 backend (Java 21), Python 3.12/FastAPI service, PostgreSQL, Docker Compose, and build checks. Scoring and AI detection are future milestones.
+This first milestone contains an Angular 22 frontend, Spring Boot 4.1.1 backend (Java 21), Python 3.12/FastAPI service, PostgreSQL, Docker Compose, and build checks. Team and player management is available. Scoring and AI detection are future milestones.
 
 ## Run locally with Docker
 
@@ -51,3 +51,11 @@ uvicorn app.main:app --reload
 - AI: activate the virtual environment, then `cd ai && python -m pytest`
 
 See [architecture](docs/architecture.md) and [milestones](docs/backlog.md).
+
+## Teams and rosters
+
+Create a team with a name and season, then add players with their names, optional jersey number (0–99), position, batting hand, and throwing hand. Edit team details, edit players, or remove a player with confirmation. Rosters persist in PostgreSQL; the browser remembers your selected team.
+
+The browser uses `/api/teams` through its proxy. Direct backend endpoints use `/teams`, with roster routes at `/teams/{teamId}/players`. Team POST and player POST return 201; deletes return 204; invalid entries return 400; missing teams or players return 404. Player operations are restricted to their parent team. These are local development APIs without authentication.
+
+Photo roster import is planned: extract a draft from a printed roster or lineup card, review names and numbers, then save. It is not implemented yet.

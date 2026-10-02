@@ -1,10 +1,45 @@
 <main>
-  <header><span class="mark">GL</span><span>GameLens</span><span class="badge">Foundation preview</span></header>
-  <section class="hero"><p class="eyebrow">EVERY PLAY HAS A STORY</p><h1>Stay with the game.<br>Capture every play.</h1><p class="intro">A simpler way to score baseball, with AI assistance on the horizon.</p></section>
-  <section class="roadmap" aria-label="Development milestones">
-    <article><span class="step">01 · NEXT UP</span><h2>Your team, together.</h2><p>Build your roster, manage players, and get ready for game day.</p></article>
-    <article><span class="step">02 · PLANNED</span><h2>Make every play count.</h2><p>Track innings, runners, outs, and scores with a clear scoring workflow.</p></article>
-    <article><span class="step">03 · ON THE HORIZON</span><h2>One phone. More insight.</h2><p>Review AI play suggestions and keep the final scoring decision in your hands.</p></article>
-  </section>
-  <footer>We’re building the foundation. Team management is the first feature coming next.</footer>
+<header><span class="mark">GL</span><span>GameLens</span><span class="badge">Team clubhouse</span></header>
+<section class="title"><p class="eyebrow">READY FOR GAME DAY</p><h1>Your team starts here.</h1><p>Bring your roster together. Every player, ready for the next inning.</p></section>
+@if(error()){<div class="message error" role="alert">{{error()}}</div>}
+@if(notice()){<div class="message success" role="status">{{notice()}}</div>}
+@if(loading()){<p role="status">Loading your teams…</p>} @else {
+<div class="workspace">
+<aside><div class="section-head"><h2>Your teams</h2><button class="small" (click)="openTeam()" [disabled]="busy()">+ New</button></div>
+@if(!teams().length){<p class="muted">Create a team to start building your roster.</p>}
+@for(t of teams();track t.id){<button class="team" [class.active]="selected()?.id===t.id" [attr.aria-pressed]="selected()?.id===t.id" (click)="select(t)" [disabled]="busy()"><strong>{{t.name}}</strong><span>{{t.season}}</span></button>}
+</aside>
+<section class="content">
+@if(teamFormOpen()){
+<form #tf="ngForm" (ngSubmit)="saveTeam()" class="panel">
+<div class="section-head"><h2>{{editingTeam()?'Edit team':'Create a team'}}</h2><button type="button" class="text" (click)="teamFormOpen.set(false)" [disabled]="busy()">Cancel</button></div>
+<div class="form-grid"><label>Team name<input name="name" [(ngModel)]="teamForm.name" required maxlength="100" placeholder="e.g. Eagles" [disabled]="busy()">@if(fields()['name']){<small>{{fields()['name']}}</small>}</label>
+<label>Season<input name="season" [(ngModel)]="teamForm.season" required maxlength="40" placeholder="e.g. Spring 2027" [disabled]="busy()">@if(fields()['season']){<small>{{fields()['season']}}</small>}</label></div>
+<button type="submit" [disabled]="tf.invalid||busy()">{{busy()?'Saving…':'Save team'}}</button>
+</form>
+}
+@if(selected();as t){
+<div class="roster-head"><div><p class="eyebrow">{{t.season}}</p><h2 class="team-title">{{t.name}}</h2><p class="muted">{{players().length}} {{players().length===1?'player':'players'}} on the roster</p></div><div class="actions"><button class="secondary" (click)="openTeam(t)" [disabled]="busy()">Edit team</button><button (click)="openPlayer()" [disabled]="busy()||rosterLoading()">+ Add player</button></div></div>
+@if(playerFormOpen()){
+<form #pf="ngForm" (ngSubmit)="savePlayer()" class="panel">
+<div class="section-head"><h2>{{editingPlayer()?'Edit player':'Add a player'}}</h2><button type="button" class="text" (click)="playerFormOpen.set(false)" [disabled]="busy()">Cancel</button></div>
+<div class="form-grid">
+<label>First name<input name="firstName" [(ngModel)]="playerForm.firstName" required maxlength="80" [disabled]="busy()">@if(fields()['firstName']){<small>{{fields()['firstName']}}</small>}</label>
+<label>Last name<input name="lastName" [(ngModel)]="playerForm.lastName" required maxlength="80" [disabled]="busy()">@if(fields()['lastName']){<small>{{fields()['lastName']}}</small>}</label>
+<label>Jersey number <span class="optional">(optional)</span><input name="jerseyNumber" type="number" [(ngModel)]="playerForm.jerseyNumber" min="0" max="99" step="1" pattern="[0-9]{1,2}" [disabled]="busy()">@if(fields()['jerseyNumber']){<small>{{fields()['jerseyNumber']}}</small>}</label>
+<label>Primary position<select name="primaryPosition" [(ngModel)]="playerForm.primaryPosition" [disabled]="busy()">@for(p of positions;track p[0]){<option [value]="p[0]">{{p[1]}}</option>}</select></label>
+<label>Bats<select name="bats" [(ngModel)]="playerForm.bats" [disabled]="busy()"><option value="RIGHT">Right</option><option value="LEFT">Left</option><option value="SWITCH">Switch</option></select></label>
+<label>Throws<select name="throwsHand" [(ngModel)]="playerForm.throwsHand" [disabled]="busy()"><option value="RIGHT">Right</option><option value="LEFT">Left</option></select></label>
+</div><button type="submit" [disabled]="pf.invalid||busy()">{{busy()?'Saving…':'Save player'}}</button>
+</form>
+}
+@if(removal();as p){<div class="confirm" role="alert"><p>Remove <strong>{{p.firstName}} {{p.lastName}}</strong> from {{t.name}}?</p><div class="actions"><button class="danger" (click)="removePlayer()" [disabled]="busy()">{{busy()?'Removing…':'Remove player'}}</button><button class="secondary" (click)="removal.set(null)" [disabled]="busy()">Keep player</button></div></div>}
+@if(rosterLoading()){<p role="status">Loading roster…</p>}@else if(!players().length){<div class="empty"><span class="ball">⚾</span><h3>A fresh lineup starts with one player.</h3><p>Add names, jersey numbers, and positions to get your team ready.</p>@if(!playerFormOpen()){<button (click)="openPlayer()" [disabled]="busy()">Add your first player</button>}</div>}@else {
+<div class="players">@for(p of players();track p.id){<article class="player"><span class="jersey">{{p.jerseyNumber??'—'}}</span><div class="player-info"><h3>{{p.firstName}} {{p.lastName}}</h3><p>{{position(p.primaryPosition)}} · Bats {{hand(p.bats)}} · Throws {{hand(p.throwsHand)}}</p></div><div class="player-actions"><button class="text" (click)="openPlayer(p)" [attr.aria-label]="'Edit '+p.firstName+' '+p.lastName" [disabled]="busy()">Edit</button><button class="text remove" (click)="resetMessages();removal.set(p)" [attr.aria-label]="'Remove '+p.firstName+' '+p.lastName" [disabled]="busy()">Remove</button></div></article>}</div>
+}
+}@else if(!teamFormOpen()){<div class="empty"><span class="ball">⚾</span><h2>Welcome to your clubhouse.</h2><p>Create your first team, then add the players who make it yours.</p><button (click)="openTeam()">Create your first team</button></div>}
+</section>
+</div>
+}
+<footer>Up next: game setup, lineups, and live scoring.</footer>
 </main>
