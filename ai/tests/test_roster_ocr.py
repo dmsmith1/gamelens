@@ -17,9 +17,9 @@ def photo():
 def test_parser_numbered_rows_and_review_only_uncertain_names():
     rows = parse_lines([("Jersey Name Position", 95), ("1 12 Alex Smith SS", 92), ("8 O’Neil, Jamie", 81), ("Taylor Jones 4", 89), ("Rockets", 90), ("123 Sam Brown", 80)])
     assert len(rows) == 5
-    assert rows[0]["jerseyNumber"] == 12 and rows[0]["primaryPosition"] == "SS"
+    assert rows[0]["jerseyNumber"] == "12" and rows[0]["primaryPosition"] == "SS"
     assert rows[1]["firstName"] == "Jamie" and rows[1]["lastName"] == "O’Neil"
-    assert rows[2]["jerseyNumber"] == 4
+    assert rows[2]["jerseyNumber"] == "4"
     assert not rows[3]["include"] and not rows[4]["include"]
 
 def test_file_validation():
@@ -57,4 +57,14 @@ def test_real_printed_roster_ocr():
     response=client.post('/roster/extract',files={'photo':('printed.png',out.getvalue(),'image/png')})
     assert response.status_code==200
     drafts=response.json()['players']
-    assert [(p['firstName'],p['lastName'],p['jerseyNumber']) for p in drafts]==[('Alex','Smith',12),('Jamie','Brown',8)]
+    assert [(p['firstName'],p['lastName'],p['jerseyNumber']) for p in drafts]==[('Alex','Smith','12'),('Jamie','Brown','8')]
+
+
+def test_lineup_columns_numbered_positions_extra_hitter_and_double_zero():
+    rows=parse_lines([("1 9 Alex Smith 2",90),("2 00 Jamie Brown 3",90),("3 2 Taylor Jones EH",90)])
+    assert rows[0]["jerseyNumber"]=="9" and rows[0]["primaryPosition"]=="C"
+    assert rows[1]["jerseyNumber"]=="00" and rows[1]["primaryPosition"]=="FIRST_BASE"
+    assert rows[2]["primaryPosition"] is None and rows[2]["lineupRole"]=="EXTRA_HITTER"
+
+def test_low_confidence_is_not_preselected():
+    assert not parse_lines([("12 Alex Smith 6",35)])[0]["include"]

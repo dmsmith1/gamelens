@@ -54,13 +54,13 @@ See [architecture](docs/architecture.md) and [milestones](docs/backlog.md).
 
 ## Teams and rosters
 
-Create a team with a name and season, then add players with their names, optional jersey number (0–99), position, batting hand, and throwing hand. Edit team details, edit players, or remove a player with confirmation. Rosters persist in PostgreSQL; the browser remembers your selected team.
+Create a team with a name and season, then add players with their names, optional jersey number (0–99, including 00), position or extra-hitter role, batting hand, and throwing hand. Edit team details, edit players, or remove a player with confirmation. Rosters persist in PostgreSQL; the browser remembers your selected team.
 
 The browser uses `/api/teams` through its proxy. Direct backend endpoints use `/teams`, with roster routes at `/teams/{teamId}/players`. Team POST and player POST return 201; deletes return 204; invalid entries return 400; missing teams or players return 404. Player operations are restricted to their parent team. These are local development APIs without authentication.
 
 ## Photo roster import
 
-Select a team, click **Import photo**, then choose a photo or use **Take photo** on a supported phone browser. Click **Read roster photo**, correct the draft, select the rows to include, and click **Import reviewed players**. Clear printed rosters with a jersey number and full name on each line work best. Handwriting, tilted photos, and complex tables may require manual correction. You can add missing rows to the draft.
+Select a team, click **Import photo**, then choose a photo or use **Take photo** on a supported phone browser. Click **Read roster photo**, correct the draft, select the rows to include, and click **Import reviewed players**. Clear printed rosters with a jersey number and full name on each line work best. Handwriting is often unreliable with the free local reader; tilted photos and complex tables may also require manual correction. You can add missing rows to the draft. Uncertain rows start unchecked. Numeric fielding positions 1–9 map to Pitcher, Catcher, First base, Second base, Third base, Shortstop, Left field, Center field, and Right field. EH is an extra hitter with no fielding position. Jersey numbers are stored and returned as strings to preserve 00.
 
 JPEG, PNG, and WebP are supported up to 10 MB and 20 megapixels. Export HEIC photos as JPEG first. Photos are processed by local Tesseract OCR in the AI container, discarded after extraction, and never sent to an external AI service. Preview images stay in browser memory until the import closes. Positions default to Utility when unreadable; bats and throws default to Right. Review these before saving.
 

@@ -37,9 +37,9 @@ public class RosterImportService {
   var record=new RosterImport();record.id=input.requestId();record.teamId=teamId;record.fingerprint=fingerprint;record.importedCount=added;record.skippedCount=skipped;imports.save(record);
   return new ImportResult(added,skipped,false);
  }
- private String key(String first,String last,Integer jersey) {return first.strip().toLowerCase(Locale.ROOT)+"\u0000"+last.strip().toLowerCase(Locale.ROOT)+"\u0000"+jersey;}
+ private String key(String first,String last,String jersey) {return first.strip().toLowerCase(Locale.ROOT)+"\u0000"+last.strip().toLowerCase(Locale.ROOT)+"\u0000"+jersey;}
  private String fingerprint(List<RosterService.PlayerInput> players) {
-  try {var hash=MessageDigest.getInstance("SHA-256");for(var p:players) {for(Object field:List.of(p.firstName(),p.lastName(),String.valueOf(p.jerseyNumber()),p.primaryPosition(),p.bats(),p.throwsHand())) {var bytes=field.toString().getBytes(StandardCharsets.UTF_8);hash.update(java.nio.ByteBuffer.allocate(4).putInt(bytes.length).array());hash.update(bytes);}}return HexFormat.of().formatHex(hash.digest());}
+  try {var hash=MessageDigest.getInstance("SHA-256");for(var p:players) {for(Object field:List.of(p.firstName(),p.lastName(),String.valueOf(p.jerseyNumber()),String.valueOf(p.primaryPosition()),p.lineupRole(),p.bats(),p.throwsHand())) {var bytes=field.toString().getBytes(StandardCharsets.UTF_8);hash.update(java.nio.ByteBuffer.allocate(4).putInt(bytes.length).array());hash.update(bytes);}}return HexFormat.of().formatHex(hash.digest());}
   catch(java.security.NoSuchAlgorithmException ex) {throw new IllegalStateException(ex);}
  }
 }

@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 interface Team { id: string; name: string; season: string; }
-interface Player { id: string; teamId: string; firstName: string; lastName: string; jerseyNumber: number | null; primaryPosition: string; bats: string; throwsHand: string; }
+interface Player { id: string; teamId: string; firstName: string; lastName: string; jerseyNumber: string | null; primaryPosition: string | null; lineupRole?:string; bats: string; throwsHand: string; }
 interface DraftPlayer extends PlayerForm { include:boolean; confidence:number; sourceText:string; }
 interface Extraction { players:DraftPlayer[]; rawText:string; message:string; }
 type PlayerForm = Omit<Player, 'id' | 'teamId'>;
@@ -14,7 +14,7 @@ export class App implements OnInit, OnDestroy {
  loading=signal(true); rosterLoading=signal(false); busy=signal(false); error=signal(''); notice=signal(''); fields=signal<Record<string,string>>({});
  teamFormOpen=signal(false); editingTeam=signal<string|null>(null); playerFormOpen=signal(false); editingPlayer=signal<string|null>(null); removal=signal<Player|null>(null);
  teamForm={name:'',season:''}; playerForm:PlayerForm=this.blankPlayer();
- readonly positions=[['P','Pitcher'],['C','Catcher'],['FIRST_BASE','First base'],['SECOND_BASE','Second base'],['THIRD_BASE','Third base'],['SS','Shortstop'],['LF','Left field'],['CF','Center field'],['RF','Right field'],['DH','Designated hitter'],['UTILITY','Utility']];
+ readonly positions=[['P','Pitcher'],['C','Catcher'],['FIRST_BASE','First base'],['SECOND_BASE','Second base'],['THIRD_BASE','Third base'],['SS','Shortstop'],['LF','Left field'],['CF','Center field'],['RF','Right field'],['DH','Designated hitter'],['EH','Extra hitter (no fielding position)'],['UTILITY','Utility']];
  constructor(private http:HttpClient) {}
  async ngOnInit() { await this.loadTeams(); }
  blankPlayer():PlayerForm { return {firstName:'',lastName:'',jerseyNumber:null,primaryPosition:'UTILITY',bats:'RIGHT',throwsHand:'RIGHT'}; }
@@ -39,10 +39,10 @@ export class App implements OnInit, OnDestroy {
     this.teams.update(ts=>[...ts.filter(x=>x.id!==t.id),t].sort((a,b)=>a.name.localeCompare(b.name)||a.season.localeCompare(b.season)));await this.select(t);this.notice.set(id?'Team updated.':'Team created. Add your first player below.');
   }catch(e){this.fail(e);}finally{this.busy.set(false);}
  }
- openPlayer(p?:Player) {this.closePhoto();this.resetMessages();this.teamFormOpen.set(false);this.editingPlayer.set(p?.id??null);this.playerForm=p?{firstName:p.firstName,lastName:p.lastName,jerseyNumber:p.jerseyNumber,primaryPosition:p.primaryPosition,bats:p.bats,throwsHand:p.throwsHand}:this.blankPlayer();this.playerFormOpen.set(true);}
+ openPlayer(p?:Player) {this.closePhoto();this.resetMessages();this.teamFormOpen.set(false);this.editingPlayer.set(p?.id??null);this.playerForm=p?{firstName:p.firstName,lastName:p.lastName,jerseyNumber:p.jerseyNumber,primaryPosition:p.lineupRole==='EXTRA_HITTER'?'EH':p.primaryPosition,bats:p.bats,throwsHand:p.throwsHand}:this.blankPlayer();this.playerFormOpen.set(true);}
  async savePlayer() {
   const t=this.selected();if(!t)return;this.busy.set(true);this.resetMessages();
-  try {const id=this.editingPlayer();const path=`/api/teams/${t.id}/players`;const data={...this.playerForm,jerseyNumber:this.playerForm.jerseyNumber??null};
+  try {const id=this.editingPlayer();const path=`/api/teams/${t.id}/players`;const data=this.playerPayload(this.playerForm);
     await firstValueFrom(id?this.http.put<Player>(`${path}/${id}`,data):this.http.post<Player>(path,data));
     this.players.set(await firstValueFrom(this.http.get<Player[]>(path)));this.playerFormOpen.set(false);this.notice.set(id?'Player updated.':'Player added.');
   }catch(e){this.fail(e);}finally{this.busy.set(false);}
@@ -65,7 +65,7 @@ export class App implements OnInit, OnDestroy {
  }
  async readPhoto(){
   if(!this.photoFile)return;this.busy.set(true);this.resetMessages();
-  try{const data=new FormData();data.append('photo',this.photoFile);const result=await firstValueFrom(this.http.post<Extraction>('/ai/roster/extract',data));this.drafts.set(result.players);this.rawText.set(result.rawText);this.photoMessage.set(result.message);this.extracted.set(true);if(!result.players.length)this.notice.set('No player rows were found. Try a closer, clearer photo, or add draft rows below.');}
+  try{const data=new FormData();data.append('photo',this.photoFile);const result=await firstValueFrom(this.http.post<Extraction>('/ai/roster/extract',data));this.drafts.set(result.players.map(p=>({...p,primaryPosition:p.lineupRole==='EXTRA_HITTER'?'EH':p.primaryPosition})));this.rawText.set(result.rawText);this.photoMessage.set(result.message);this.extracted.set(true);if(!result.players.length)this.notice.set('No player rows were found. Try a closer, clearer photo, or add draft rows below.');}
   catch(e){this.fail(e);}finally{this.busy.set(false);}
  }
  addDraft(){this.drafts.update(ds=>[...ds,{...this.blankPlayer(),include:true,confidence:0,sourceText:'Added manually'}]);}
@@ -73,7 +73,7 @@ export class App implements OnInit, OnDestroy {
  includedCount(){return this.drafts().filter(d=>d.include).length;}
  async saveDraft(){
   const team=this.selected();if(!team)return;
-  const players=this.drafts().filter(d=>d.include).map(d=>({firstName:d.firstName.trim(),lastName:d.lastName.trim(),jerseyNumber:d.jerseyNumber??null,primaryPosition:d.primaryPosition,bats:d.bats,throwsHand:d.throwsHand}));
+  const players=this.drafts().filter(d=>d.include).map(d=>this.playerPayload(d));
   if(!players.length)return;
   this.busy.set(true);this.resetMessages();
   const signature=JSON.stringify(players);
@@ -84,7 +84,8 @@ export class App implements OnInit, OnDestroy {
    this.notice.set(`${result.importedCount} ${result.importedCount===1?'player':'players'} imported.${result.skippedCount?' '+result.skippedCount+' matching entries skipped.':''}`);
   }catch(e){this.fail(e);}finally{this.busy.set(false);}
  }
- position(value:string){return this.positions.find(p=>p[0]===value)?.[1]??value;}
+ playerPayload(p:PlayerForm){return {bats:p.bats,throwsHand:p.throwsHand,firstName:p.firstName.trim(),lastName:p.lastName.trim(),jerseyNumber:p.jerseyNumber?.trim()||null,primaryPosition:p.primaryPosition==='EH'?null:p.primaryPosition,lineupRole:p.primaryPosition==='EH'?'EXTRA_HITTER':'FIELDING'};}
+ position(value:string|null,role?:string){if(role==='EXTRA_HITTER')return 'Extra hitter (no fielding position)';return this.positions.find(p=>p[0]===value)?.[1]??value;}
  hand(value:string){return value==='LEFT'?'Left':value==='SWITCH'?'Switch':'Right';}
  fail(e:unknown) {const err=e as HttpErrorResponse;this.error.set(err.error?.message??err.error?.detail??'Could not reach GameLens. Check the connection and try again.');this.fields.set(err.error?.fields??{});}
 }

@@ -25,10 +25,10 @@
 <div class="section-head"><h2>Import a roster photo</h2><button type="button" class="text" (click)="closePhoto()" [disabled]="busy()">Cancel import</button></div>
 <p class="muted">Use a clear, printed roster with one player per line. Names and jersey numbers work best. Review everything before saving.</p>
 <div class="photo-pickers"><label class="file-button">Choose photo<input type="file" accept="image/jpeg,image/png,image/webp" (change)="choosePhoto($event)" [disabled]="busy()"></label><label class="file-button secondary">Take photo<input type="file" accept="image/jpeg,image/png,image/webp" capture="environment" (change)="choosePhoto($event)" [disabled]="busy()"></label></div>
-<p class="muted tiny">JPEG, PNG, or WebP · up to 10 MB. Processed locally; photos are discarded after reading. Handwriting may need manual correction.</p>
+<p class="muted tiny">JPEG, PNG, or WebP · up to 10 MB. Processed locally; photos are discarded after reading. Handwriting is often unreliable. Correct names or add missing players in the draft.</p>
 @if(photoPreview()){<img class="photo-preview" [src]="photoPreview()" alt="Selected roster photo"><button type="button" (click)="readPhoto()" [disabled]="busy()">{{busy()&&!extracted()?'Reading photo…':'Read roster photo'}}</button>}
 @if(extracted()){
-<h3 class="review-title">Review your draft</h3><p class="muted">{{photoMessage()}} Only checked rows will be imported. Names without a readable number start unchecked.</p>
+<h3 class="review-title">Review your draft</h3><p class="muted">{{photoMessage()}} Only checked rows will be imported. Uncertain rows and names without a readable number start unchecked.</p>
 <form #review="ngForm" (ngSubmit)="saveDraft()">
 @for(d of drafts();track $index;let i=$index){
 <div class="draft-row" [class.excluded]="!d.include">
@@ -37,8 +37,8 @@
 <div class="form-grid">
 <label>First name<input [name]="'first'+i" [(ngModel)]="d.firstName" required maxlength="80" [disabled]="!d.include||busy()"></label>
 <label>Last name<input [name]="'last'+i" [(ngModel)]="d.lastName" required maxlength="80" [disabled]="!d.include||busy()"></label>
-<label>Jersey number <span class="optional">(optional)</span><input type="number" [name]="'jersey'+i" [(ngModel)]="d.jerseyNumber" min="0" max="99" step="1" pattern="[0-9]{1,2}" [disabled]="!d.include||busy()"></label>
-<label>Position<select [name]="'position'+i" [(ngModel)]="d.primaryPosition" [disabled]="!d.include||busy()">@for(p of positions;track p[0]){<option [value]="p[0]">{{p[1]}}</option>}</select></label>
+<label>Jersey number <span class="optional">(optional)</span><input type="text" inputmode="numeric" [name]="'jersey'+i" [(ngModel)]="d.jerseyNumber" maxlength="2" pattern="[0-9]{1,2}" [disabled]="!d.include||busy()"></label>
+<label>Position / lineup role<select [name]="'position'+i" [(ngModel)]="d.primaryPosition" [disabled]="!d.include||busy()">@for(p of positions;track p[0]){<option [value]="p[0]">{{p[1]}}</option>}</select></label>
 <label>Bats<select [name]="'bats'+i" [(ngModel)]="d.bats" [disabled]="!d.include||busy()"><option value="RIGHT">Right</option><option value="LEFT">Left</option><option value="SWITCH">Switch</option></select></label>
 <label>Throws<select [name]="'throws'+i" [(ngModel)]="d.throwsHand" [disabled]="!d.include||busy()"><option value="RIGHT">Right</option><option value="LEFT">Left</option></select></label>
 </div></div>
@@ -56,8 +56,8 @@
 <div class="form-grid">
 <label>First name<input name="firstName" [(ngModel)]="playerForm.firstName" required maxlength="80" [disabled]="busy()">@if(fields()['firstName']){<small>{{fields()['firstName']}}</small>}</label>
 <label>Last name<input name="lastName" [(ngModel)]="playerForm.lastName" required maxlength="80" [disabled]="busy()">@if(fields()['lastName']){<small>{{fields()['lastName']}}</small>}</label>
-<label>Jersey number <span class="optional">(optional)</span><input name="jerseyNumber" type="number" [(ngModel)]="playerForm.jerseyNumber" min="0" max="99" step="1" pattern="[0-9]{1,2}" [disabled]="busy()">@if(fields()['jerseyNumber']){<small>{{fields()['jerseyNumber']}}</small>}</label>
-<label>Primary position<select name="primaryPosition" [(ngModel)]="playerForm.primaryPosition" [disabled]="busy()">@for(p of positions;track p[0]){<option [value]="p[0]">{{p[1]}}</option>}</select></label>
+<label>Jersey number <span class="optional">(optional)</span><input name="jerseyNumber" type="text" inputmode="numeric" [(ngModel)]="playerForm.jerseyNumber" maxlength="2" pattern="[0-9]{1,2}" [disabled]="busy()">@if(fields()['jerseyNumber']){<small>{{fields()['jerseyNumber']}}</small>}</label>
+<label>Position / lineup role<select name="primaryPosition" [(ngModel)]="playerForm.primaryPosition" [disabled]="busy()">@for(p of positions;track p[0]){<option [value]="p[0]">{{p[1]}}</option>}</select></label>
 <label>Bats<select name="bats" [(ngModel)]="playerForm.bats" [disabled]="busy()"><option value="RIGHT">Right</option><option value="LEFT">Left</option><option value="SWITCH">Switch</option></select></label>
 <label>Throws<select name="throwsHand" [(ngModel)]="playerForm.throwsHand" [disabled]="busy()"><option value="RIGHT">Right</option><option value="LEFT">Left</option></select></label>
 </div><button type="submit" [disabled]="pf.invalid||busy()">{{busy()?'Saving…':'Save player'}}</button>
@@ -65,7 +65,7 @@
 }
 @if(removal();as p){<div class="confirm" role="alert"><p>Remove <strong>{{p.firstName}} {{p.lastName}}</strong> from {{t.name}}?</p><div class="actions"><button class="danger" (click)="removePlayer()" [disabled]="busy()">{{busy()?'Removing…':'Remove player'}}</button><button class="secondary" (click)="removal.set(null)" [disabled]="busy()">Keep player</button></div></div>}
 @if(rosterLoading()){<p role="status">Loading roster…</p>}@else if(!players().length){<div class="empty"><span class="ball">⚾</span><h3>A fresh lineup starts with one player.</h3><p>Add names, jersey numbers, and positions to get your team ready.</p>@if(!playerFormOpen()){<button (click)="openPlayer()" [disabled]="busy()">Add your first player</button>}</div>}@else {
-<div class="players">@for(p of players();track p.id){<article class="player"><span class="jersey">{{p.jerseyNumber??'—'}}</span><div class="player-info"><h3>{{p.firstName}} {{p.lastName}}</h3><p>{{position(p.primaryPosition)}} · Bats {{hand(p.bats)}} · Throws {{hand(p.throwsHand)}}</p></div><div class="player-actions"><button class="text" (click)="openPlayer(p)" [attr.aria-label]="'Edit '+p.firstName+' '+p.lastName" [disabled]="busy()">Edit</button><button class="text remove" (click)="resetMessages();removal.set(p)" [attr.aria-label]="'Remove '+p.firstName+' '+p.lastName" [disabled]="busy()">Remove</button></div></article>}</div>
+<div class="players">@for(p of players();track p.id){<article class="player"><span class="jersey">{{p.jerseyNumber??'—'}}</span><div class="player-info"><h3>{{p.firstName}} {{p.lastName}}</h3><p>{{position(p.primaryPosition,p.lineupRole)}} · Bats {{hand(p.bats)}} · Throws {{hand(p.throwsHand)}}</p></div><div class="player-actions"><button class="text" (click)="openPlayer(p)" [attr.aria-label]="'Edit '+p.firstName+' '+p.lastName" [disabled]="busy()">Edit</button><button class="text remove" (click)="resetMessages();removal.set(p)" [attr.aria-label]="'Remove '+p.firstName+' '+p.lastName" [disabled]="busy()">Remove</button></div></article>}</div>
 }
 }@else if(!teamFormOpen()){<div class="empty"><span class="ball">⚾</span><h2>Welcome to your clubhouse.</h2><p>Create your first team, then add the players who make it yours.</p><button (click)="openTeam()">Create your first team</button></div>}
 </section>

@@ -12,7 +12,7 @@ MAX_BYTES = 10 * 1024 * 1024
 MAX_PIXELS = 20_000_000
 Image.MAX_IMAGE_PIXELS = MAX_PIXELS
 HEADER_WORDS = {"name", "number", "jersey", "player", "players", "roster", "lineup", "team", "season", "coach", "position", "bats", "throws"}
-POSITIONS = {"P":"P", "C":"C", "1B":"FIRST_BASE", "2B":"SECOND_BASE", "3B":"THIRD_BASE", "SS":"SS", "LF":"LF", "CF":"CF", "RF":"RF", "DH":"DH", "UT":"UTILITY", "UTIL":"UTILITY"}
+POSITIONS = {"P":"P", "C":"C", "1B":"FIRST_BASE", "2B":"SECOND_BASE", "3B":"THIRD_BASE", "SS":"SS", "LF":"LF", "CF":"CF", "RF":"RF", "DH":"DH", "UT":"UTILITY", "UTIL":"UTILITY", "EH":"EH"}
 
 def parse_lines(lines):
     drafts = []
@@ -29,10 +29,12 @@ def parse_lines(lines):
             position = POSITIONS[tokens.pop().upper()]
         numbers = []
         while tokens and re.fullmatch(r"#?\d{1,3}[.)]?", tokens[0]):
-            numbers.append(int(re.sub(r"\D", "", tokens.pop(0))))
+            numbers.append(re.sub(r"\D", "", tokens.pop(0)))
         jersey = numbers[-1] if numbers else None
-        if tokens and re.fullmatch(r"#?\d{1,3}", tokens[-1]):
-            jersey = int(tokens.pop().lstrip("#"))
+        if numbers and tokens and tokens[-1] in {str(n) for n in range(1,10)}:
+            position = {"1":"P","2":"C","3":"FIRST_BASE","4":"SECOND_BASE","5":"THIRD_BASE","6":"SS","7":"LF","8":"CF","9":"RF"}[tokens.pop()]
+        elif tokens and re.fullmatch(r"#?\d{1,3}", tokens[-1]):
+            jersey = tokens.pop().lstrip("#")
         if not tokens or any(re.search(r"\d", t) for t in tokens):
             continue
         name = " ".join(tokens).strip(" .-–")
@@ -45,9 +47,9 @@ def parse_lines(lines):
             first, last = (parts[0], " ".join(parts[1:])) if len(parts) > 1 else (name, "")
         if len(first) > 80 or len(last) > 80:
             continue
-        drafts.append({"firstName":first, "lastName":last, "jerseyNumber":jersey if jersey is not None and 0 <= jersey <= 99 else None,
-                       "primaryPosition":position, "bats":"RIGHT", "throwsHand":"RIGHT", "confidence":round(confidence),
-                       "sourceText":original, "include":jersey is not None and 0 <= jersey <= 99 and bool(first and last)})
+        drafts.append({"firstName":first, "lastName":last, "jerseyNumber":jersey if jersey is not None and bool(re.fullmatch(r"[0-9]{1,2}",jersey)) else None,
+                       "primaryPosition":None if position=="EH" else position, "lineupRole":"EXTRA_HITTER" if position=="EH" else "FIELDING", "bats":"RIGHT", "throwsHand":"RIGHT", "confidence":round(confidence),
+                       "sourceText":original, "include":jersey is not None and bool(re.fullmatch(r"[0-9]{1,2}",jersey)) and bool(first and last) and confidence >= 70})
         if len(drafts) >= 100:
             break
     return drafts

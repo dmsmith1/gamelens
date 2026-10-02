@@ -62,4 +62,13 @@ class RosterApiTests {
   assertEquals(409,changed.getStatusCode().value());
  }
 
+ @Test void preservesDoubleZeroAndExtraHitterHasNoPosition() {
+  var c=client();var t=team("Roles Test");var input=player("Hitter");
+  input.put("jerseyNumber","00");input.put("primaryPosition",null);input.put("lineupRole","EXTRA_HITTER");
+  var created=c.post().uri("/teams/"+t.get("id")+"/players").body(input).retrieve().body(Map.class);
+  assertEquals("00",created.get("jerseyNumber"));assertNull(created.get("primaryPosition"));assertEquals("EXTRA_HITTER",created.get("lineupRole"));
+  input.put("primaryPosition","SS");
+  assertEquals(400,assertThrows(HttpClientErrorException.class,()->c.post().uri("/teams/"+t.get("id")+"/players").body(input).retrieve().toBodilessEntity()).getStatusCode().value());
+ }
+
 }
