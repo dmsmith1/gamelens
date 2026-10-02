@@ -13,8 +13,12 @@ public class RosterService {
  public RosterService(TeamRepository teams, PlayerRepository players) { this.teams=teams; this.players=players; }
  public record TeamInput(@NotBlank @Size(max=100) String name, @NotBlank @Size(max=40) String season) {}
  public record PlayerInput(@NotBlank @Size(max=80) String firstName, @NotBlank @Size(max=80) String lastName,
-   @Min(0) @Max(99) Integer jerseyNumber, @NotNull Player.Position primaryPosition,
-   @NotNull Player.BattingHand bats, @NotNull Player.ThrowingHand throwsHand) {}
+   @Pattern(regexp="[0-9]{1,2}") String jerseyNumber, Player.Position primaryPosition,
+   @NotNull Player.BattingHand bats, @NotNull Player.ThrowingHand throwsHand, Player.LineupRole lineupRole) {
+   public Player.LineupRole lineupRole() { return lineupRole == null ? Player.LineupRole.FIELDING : lineupRole; }
+   @AssertTrue(message="Extra hitters have no fielding position; other players need a position")
+   public boolean isPositionValid() { return lineupRole() == Player.LineupRole.EXTRA_HITTER ? primaryPosition == null : primaryPosition != null; }
+ }
  @Transactional(readOnly=true) public List<Team> teams() { return teams.findAllByOrderByNameAscSeasonAsc(); }
  @Transactional(readOnly=true) public Team team(UUID id) { return teams.findById(id).orElseThrow(() -> new ResponseStatusException(NOT_FOUND,"Team not found")); }
  public Team createTeam(TeamInput input) { return teams.save(new Team(UUID.randomUUID(),input.name().strip(),input.season().strip())); }
@@ -25,9 +29,10 @@ public class RosterService {
    Player p=playerId==null ? new Player() : player(teamId,playerId);
    if(playerId==null) { p.id=UUID.randomUUID(); p.teamId=teamId; }
    p.firstName=input.firstName().strip();p.lastName=input.lastName().strip();p.jerseyNumber=input.jerseyNumber();
-   p.primaryPosition=input.primaryPosition();p.bats=input.bats();p.throwsHand=input.throwsHand();
+   p.primaryPosition=input.primaryPosition();p.lineupRole=input.lineupRole();p.bats=input.bats();p.throwsHand=input.throwsHand();
    return players.save(p);
  }
  private Player player(UUID teamId, UUID playerId) { return players.findByIdAndTeamId(playerId,teamId).orElseThrow(() -> new ResponseStatusException(NOT_FOUND,"Player not found on this team")); }
+ public void lockTeam(UUID id) { teams.lockById(id).orElseThrow(() -> new ResponseStatusException(NOT_FOUND,"Team not found")); }
  public void removePlayer(UUID teamId, UUID playerId) { team(teamId);players.delete(player(teamId,playerId)); }
 }

@@ -8,4 +8,4 @@
 6. AI suggestions: observations, confidence, scorer review and corrections.
 7. Pilot: authentication, permissions, consent, retention, and operation with a small set of teams.
 
-Next acceptance target: create a game, select the team, and set the batting lineup. Photo roster import is planned with OCR extraction and human review before saving. Team ownership/authentication remains required before shared deployment.
+Next acceptance target: create a game, select the team, and set the batting lineup. Photo roster import is implemented for printed JPEG/PNG/WebP images with local OCR extraction and human review before saving. Handwriting recognition and HEIC support remain future improvements. Team ownership/authentication remains required before shared deployment.

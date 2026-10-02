@@ -47,4 +47,28 @@ class RosterApiTests {
   var missing=assertThrows(HttpClientErrorException.class,() -> c.get().uri("/teams/"+UUID.randomUUID()+"/players").retrieve().toBodilessEntity());
   assertEquals(404,missing.getStatusCode().value());
  }
+ @Test void importsAtomicallySkipsDuplicatesAndAllowsSafeRetry() {
+  var c=client();var t=team("Import Test");String path="/teams/"+t.get("id")+"/players";
+  String requestId=UUID.randomUUID().toString();
+  var payload=Map.of("requestId",requestId,"players",List.of(player("Alex"),player("Alex"),player("Jamie")));
+  var result=c.post().uri(path+"/import").body(payload).retrieve().body(Map.class);
+  assertEquals(2,result.get("importedCount"));assertEquals(1,result.get("skippedCount"));
+  var retry=c.post().uri(path+"/import").body(payload).retrieve().body(Map.class);
+  assertEquals(true,retry.get("repeated"));assertEquals(2,c.get().uri(path).retrieve().body(List.class).size());
+  var invalid=player("Bad");invalid.put("jerseyNumber",101);
+  var failure=assertThrows(HttpClientErrorException.class,()->c.post().uri(path+"/import").body(Map.of("requestId",UUID.randomUUID(),"players",List.of(player("Valid"),invalid))).retrieve().toBodilessEntity());
+  assertEquals(400,failure.getStatusCode().value());assertEquals(2,c.get().uri(path).retrieve().body(List.class).size());
+  var changed=assertThrows(HttpClientErrorException.class,()->c.post().uri(path+"/import").body(Map.of("requestId",requestId,"players",List.of(player("Changed")))).retrieve().toBodilessEntity());
+  assertEquals(409,changed.getStatusCode().value());
+ }
+
+ @Test void preservesDoubleZeroAndExtraHitterHasNoPosition() {
+  var c=client();var t=team("Roles Test");var input=player("Hitter");
+  input.put("jerseyNumber","00");input.put("primaryPosition",null);input.put("lineupRole","EXTRA_HITTER");
+  var created=c.post().uri("/teams/"+t.get("id")+"/players").body(input).retrieve().body(Map.class);
+  assertEquals("00",created.get("jerseyNumber"));assertNull(created.get("primaryPosition"));assertEquals("EXTRA_HITTER",created.get("lineupRole"));
+  input.put("primaryPosition","SS");
+  assertEquals(400,assertThrows(HttpClientErrorException.class,()->c.post().uri("/teams/"+t.get("id")+"/players").body(input).retrieve().toBodilessEntity()).getStatusCode().value());
+ }
+
 }
