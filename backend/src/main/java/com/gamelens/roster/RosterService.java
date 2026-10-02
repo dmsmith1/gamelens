@@ -29,5 +29,6 @@ public class RosterService {
    return players.save(p);
  }
  private Player player(UUID teamId, UUID playerId) { return players.findByIdAndTeamId(playerId,teamId).orElseThrow(() -> new ResponseStatusException(NOT_FOUND,"Player not found on this team")); }
+ public void lockTeam(UUID id) { teams.lockById(id).orElseThrow(() -> new ResponseStatusException(NOT_FOUND,"Team not found")); }
  public void removePlayer(UUID teamId, UUID playerId) { team(teamId);players.delete(player(teamId,playerId)); }
 }

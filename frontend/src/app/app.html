@@ -19,7 +19,37 @@
 </form>
 }
 @if(selected();as t){
-<div class="roster-head"><div><p class="eyebrow">{{t.season}}</p><h2 class="team-title">{{t.name}}</h2><p class="muted">{{players().length}} {{players().length===1?'player':'players'}} on the roster</p></div><div class="actions"><button class="secondary" (click)="openTeam(t)" [disabled]="busy()">Edit team</button><button (click)="openPlayer()" [disabled]="busy()||rosterLoading()">+ Add player</button></div></div>
+<div class="roster-head"><div><p class="eyebrow">{{t.season}}</p><h2 class="team-title">{{t.name}}</h2><p class="muted">{{players().length}} {{players().length===1?'player':'players'}} on the roster</p></div><div class="actions"><button class="secondary" (click)="openTeam(t)" [disabled]="busy()">Edit team</button><button class="secondary" (click)="openPhoto()" [disabled]="busy()||rosterLoading()">Import photo</button><button (click)="openPlayer()" [disabled]="busy()||rosterLoading()">+ Add player</button></div></div>
+@if(photoOpen()){
+<section class="panel photo-panel" aria-label="Photo roster import">
+<div class="section-head"><h2>Import a roster photo</h2><button type="button" class="text" (click)="closePhoto()" [disabled]="busy()">Cancel import</button></div>
+<p class="muted">Use a clear, printed roster with one player per line. Names and jersey numbers work best. Review everything before saving.</p>
+<div class="photo-pickers"><label class="file-button">Choose photo<input type="file" accept="image/jpeg,image/png,image/webp" (change)="choosePhoto($event)" [disabled]="busy()"></label><label class="file-button secondary">Take photo<input type="file" accept="image/jpeg,image/png,image/webp" capture="environment" (change)="choosePhoto($event)" [disabled]="busy()"></label></div>
+<p class="muted tiny">JPEG, PNG, or WebP · up to 10 MB. Processed locally; photos are discarded after reading. Handwriting may need manual correction.</p>
+@if(photoPreview()){<img class="photo-preview" [src]="photoPreview()" alt="Selected roster photo"><button type="button" (click)="readPhoto()" [disabled]="busy()">{{busy()&&!extracted()?'Reading photo…':'Read roster photo'}}</button>}
+@if(extracted()){
+<h3 class="review-title">Review your draft</h3><p class="muted">{{photoMessage()}} Only checked rows will be imported. Names without a readable number start unchecked.</p>
+<form #review="ngForm" (ngSubmit)="saveDraft()">
+@for(d of drafts();track $index;let i=$index){
+<div class="draft-row" [class.excluded]="!d.include">
+<div class="section-head"><label class="include"><input type="checkbox" [name]="'include'+i" [(ngModel)]="d.include" [disabled]="busy()">Include player {{i+1}}</label><button type="button" class="text remove" (click)="removeDraft(i)" [disabled]="busy()">Discard row {{i+1}}</button></div>
+<p class="source">Read: {{d.sourceText}} @if(d.confidence>0&&d.confidence<80){<span class="uncertain">· Check carefully</span>}</p>
+<div class="form-grid">
+<label>First name<input [name]="'first'+i" [(ngModel)]="d.firstName" required maxlength="80" [disabled]="!d.include||busy()"></label>
+<label>Last name<input [name]="'last'+i" [(ngModel)]="d.lastName" required maxlength="80" [disabled]="!d.include||busy()"></label>
+<label>Jersey number <span class="optional">(optional)</span><input type="number" [name]="'jersey'+i" [(ngModel)]="d.jerseyNumber" min="0" max="99" step="1" pattern="[0-9]{1,2}" [disabled]="!d.include||busy()"></label>
+<label>Position<select [name]="'position'+i" [(ngModel)]="d.primaryPosition" [disabled]="!d.include||busy()">@for(p of positions;track p[0]){<option [value]="p[0]">{{p[1]}}</option>}</select></label>
+<label>Bats<select [name]="'bats'+i" [(ngModel)]="d.bats" [disabled]="!d.include||busy()"><option value="RIGHT">Right</option><option value="LEFT">Left</option><option value="SWITCH">Switch</option></select></label>
+<label>Throws<select [name]="'throws'+i" [(ngModel)]="d.throwsHand" [disabled]="!d.include||busy()"><option value="RIGHT">Right</option><option value="LEFT">Left</option></select></label>
+</div></div>
+}
+<div class="actions"><button type="button" class="secondary" (click)="addDraft()" [disabled]="busy()||drafts().length>=100">+ Add missing player</button><button type="submit" [disabled]="review.invalid||!includedCount()||busy()">{{busy()?'Saving…':'Import '+includedCount()+' reviewed players'}}</button></div>
+<p class="muted tiny">Matching name and jersey entries already on this team are skipped. Existing players are kept.</p>
+</form>
+<details><summary>View text read from photo</summary><pre>{{rawText()||'No readable text found.'}}</pre></details>
+}
+</section>
+}
 @if(playerFormOpen()){
 <form #pf="ngForm" (ngSubmit)="savePlayer()" class="panel">
 <div class="section-head"><h2>{{editingPlayer()?'Edit player':'Add a player'}}</h2><button type="button" class="text" (click)="playerFormOpen.set(false)" [disabled]="busy()">Cancel</button></div>
